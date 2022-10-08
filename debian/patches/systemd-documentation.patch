@@ -1,0 +1,15 @@
+Description: Add Documentation to systemd service
+Author: Valentin Vidic <Valentin.Vidic@CARNet.hr>
+Last-Update: 2018-05-01
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
+--- a/heartbeat/init.d/heartbeat.service.in
++++ b/heartbeat/init.d/heartbeat.service.in
+@@ -1,5 +1,7 @@
+ [Unit]
+ Description=Heartbeat High Availability Cluster Communication and Membership
++Documentation=man:heartbeat(8)
++Documentation=http://www.linux-ha.org/wiki/Documentation
+ # partially copied and adapted from the pacemaker.service file
+ 
+ After=basic.target

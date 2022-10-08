@@ -1,0 +1,15 @@
+Description: Use /run instead of /var/run
+Author: Valentin Vidic <vvidic@debian.org>
+Last-Update: 2018-12-09
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
+--- a/heartbeat/init.d/heartbeat.conf.in
++++ b/heartbeat/init.d/heartbeat.conf.in
+@@ -9,6 +9,4 @@
+ # d      @HA_VARRUNHBRSCDIR@	1777  root       root      -
+ 
+ # this should be shipped by pacemaker!
+-d      /var/run/crm             0750  hacluster  haclient  -
+-# this should be shipped by resource-agents!
+-d      /var/run/resource-agents 0755  root       root      -
++d      /run/crm             0750  hacluster  haclient  -

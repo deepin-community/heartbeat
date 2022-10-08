@@ -1,0 +1,1735 @@
+Description: Switch to python3
+Author: Dimitri John Ledkov <xnox@ubuntu.com>
+
+
+Index: heartbeat-3.0.6/heartbeat/ha_test.py
+===================================================================
+--- heartbeat-3.0.6.orig/heartbeat/ha_test.py
++++ heartbeat-3.0.6/heartbeat/ha_test.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python
++#!/usr/bin/env python3
+ 
+ __copyright__='''
+ Copyright (C) 2000 Alan Robertson <alanr@unix.sh>
+@@ -85,7 +85,7 @@ class RequestMsg (ha_msg):
+ 
+                 # Remember this message
+ 
+-                if nodes.has_key(fromnode):
++                if fromnode in nodes:
+                     del nodes[fromnode]
+                     replies.append(msg)
+                 else:
+@@ -95,7 +95,7 @@ class RequestMsg (ha_msg):
+                 if len(nodes) == 0:
+                     return replies, [], extras
+             else:
+-              return replies, nodes.keys(), extras
++              return replies, list(nodes.keys()), extras
+ 
+     def sendall(self, api, timeout, participants=None):
+ 
+@@ -122,7 +122,7 @@ class RequestMsg (ha_msg):
+         '''
+ 
+         if api.nodestatus(node) != hb_api.ActiveStatus:
+-            print "Attempt to send request to bad/down node"
++            print("Attempt to send request to bad/down node")
+         api.sendnodemsg(self, node)
+         return self.WaitForReplies(api, [node], timeout)
+ 
+@@ -189,8 +189,8 @@ class TestMappings(UserDict):
+         This function is all about error checking.
+         '''
+ 
+-        if ((not isinstance(value, types.ListType)
+-             and  not isinstance(value, types.TupleType))
++        if ((not isinstance(value, list)
++             and  not isinstance(value, tuple))
+         or   len(value) != 2)				:
+             raise ValueError("inappropriate TestMappings tuple")
+ 
+@@ -207,13 +207,13 @@ class TestMappings(UserDict):
+         '''
+ 
+         reqtype=msg[ha_msg.F_APIREQ]
+-        if self.has_key(reqtype):
++        if reqtype in self:
+             self[reqtype][0](msg, self.Api, self[reqtype][1])
+-        elif self.has_key(self.Api.BADREQ):
++        elif self.Api.BADREQ in self:
+             self[self.Api.BADREQ][0](msg, self.Api, self[self.Api.BADREQ][1])
+         else:
+             #	It would be nice to do something better ;-)
+-            print "No handler for request type %s" % reqtype
++            print("No handler for request type %s" % reqtype)
+ 
+ class CTSRequest (RequestMsg):
+     '''A CTS request message.  This class can be further subclassed to
+@@ -231,7 +231,7 @@ class CTSReply(ReplyMsg):
+ 
+ 
+ def client_stat_callback(msg, data):
+-	print msg, data
++	print(msg, data)
+ 
+ #
+ #   A little test code...
+@@ -259,10 +259,10 @@ if __name__ == '__main__':
+ 
+         '''Construct and send a ping reply message.'''
+ 
+-	print "PINGPINGPINGPINGPING from %s" % pingmsg[ha_msg.F_ORIG]
++        print("PINGPINGPINGPINGPING from %s" % pingmsg[ha_msg.F_ORIG])
+         reply=CTSReply(pingmsg, api.OK)
+         reply.send(api)
+-	PingRequest().sendall(api, 0)
++        PingRequest().sendall(api, 0)
+ 
+     #	Function to perform a Bad Request reply...
+     def BadReq(badmsg, api, arg):
+@@ -275,7 +275,7 @@ if __name__ == '__main__':
+ 
+     hb = hb_api(debug=0)
+     if not hb.signon("ping"):
+-	    print >> sys.stderr, "Unable to signon with heartbeat"
++	    print("Unable to signon with heartbeat", file=sys.stderr)
+ 	    sys.exit(1)
+ 
+     #	Set up response functions to automatically reply to pings when
+@@ -290,15 +290,15 @@ if __name__ == '__main__':
+     hb.set_msg_callback(ha_msg.T_TESTREQ, testmap, None)
+     hb.set_msg_callback("hbapi-clstat", client_stat_callback, None)
+ 
+-    print hb.cluster_config()
++    print(hb.cluster_config())
+ 
+     req = PingRequest()  # Same as CTSRequest("ping")
+-    print req.sendnode(hb, "kathyamy", 1)
++    print(req.sendnode(hb, "kathyamy", 1))
+ 
+     spam = SpamRequest()  # Same as CTSRequest("spam")
+-    print spam.sendnode(hb, "kathyamy", 1)
++    print(spam.sendnode(hb, "kathyamy", 1))
+ 
+-    print req.sendall(hb, 1)
++    print(req.sendall(hb, 1))
+ 
+     # Wait for some more messages.  As long as all dispatched messages are
+     # handled by callbacks, and no timeout occurs, this can process an
+Index: heartbeat-3.0.6/heartbeat/hb_api.py
+===================================================================
+--- heartbeat-3.0.6.orig/heartbeat/hb_api.py
++++ heartbeat-3.0.6/heartbeat/hb_api.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/python
++#!/usr/bin/python3
+ 
+ '''Heartbeat related classes.
+ 
+@@ -40,14 +40,14 @@ import grp
+ global debug_level
+ debug_level = 0
+ def dbg(level, *args):
+-	if level > debug_level:
+-		return
+-	print >> sys.stderr, "<%d>%s" % (level, " ".join(args))
++        if level > debug_level:
++                return
++        print("<%d>%s" % (level, " ".join(args)), file=sys.stderr)
+ 
+ '''
+-	"module" simple regex based netstring
+-	We don't need an arbitrary buffer based netstring parser,
+-	we only ever decode complete netstring messages of limitted size.
++        "module" simple regex based netstring
++        We don't need an arbitrary buffer based netstring parser,
++        we only ever decode complete netstring messages of limitted size.
+ '''
+ 
+ import re
+@@ -55,24 +55,24 @@ def netstring_encode(s):
+     return "%i:%s," % (len(s), s)
+ 
+ def _netstring_decode(s):
+-	while len(s):
+-		m = re.match(r"(\d+):", s)
+-		if not m:
+-			raise ValueError("invalid size digit: expected '\d+:', but got '%c'" % s[0])
+-
+-		l = len(m.group(0))
+-		n = int(m.group(1))
+-		if len(s) < n + l:
+-			raise ValueError("truncated input: expected %u bytes, only %u available" % (n, len(s)))
+-		if s[n+l] != ',':
+-			raise ValueError("invalid input: expected ',' terminator, but got '%c'" % s[n+l])
+-		v = s[l:n+l]
+-		s = s[n+l+1:]
+-		yield v
++        while len(s):
++                m = re.match(r"(\d+):", s)
++                if not m:
++                        raise ValueError("invalid size digit: expected '\d+:', but got '%c'" % s[0])
++
++                l = len(m.group(0))
++                n = int(m.group(1))
++                if len(s) < n + l:
++                        raise ValueError("truncated input: expected %u bytes, only %u available" % (n, len(s)))
++                if s[n+l] != ',':
++                        raise ValueError("invalid input: expected ',' terminator, but got '%c'" % s[n+l])
++                v = s[l:n+l]
++                s = s[n+l+1:]
++                yield v
+ 
+ 
+ def netstring_decode(data):
+-	return list(_netstring_decode(data))
++        return list(_netstring_decode(data))
+ 
+ class ha_msg (UserDict): 
+ 
+@@ -107,7 +107,7 @@ class ha_msg (UserDict):
+ 
+     Constructor arguments:
+         dictionaries, ha_msg objects, 2-element lists/tuples, files
+-	strings (in canonical msg format)
++        strings (in canonical msg format)
+ 
+     Exceptions raised:
+ 
+@@ -118,7 +118,7 @@ class ha_msg (UserDict):
+        when you give us messages you can't guarantee are perfect.
+     '''
+ 
+-    #	Field names start with F_...
++    #   Field names start with F_...
+ 
+     F_TYPE="t"
+     F_ORIG="src"
+@@ -139,7 +139,7 @@ class ha_msg (UserDict):
+     F_PNAME="pname"
+     F_PVALUE="pvalue"
+ 
+-    #	Message types start with T_...
++    #   Message types start with T_...
+ 
+     T_APIREQ="hbapi-req"
+     T_APIRESP="hbapi-resp"
+@@ -153,21 +153,21 @@ class ha_msg (UserDict):
+     #   Things we need for making network-compatible strings
+     #   from ha_msg objects
+     #
+-    max_reprlen = 1024	# Maximum length string for an ha_msg
++    max_reprlen = 1024  # Maximum length string for an ha_msg
+     startstr=">>>\n"
+     endstr="<<<\n"
+-    endstr0="<<<\n\0"	# Bug to bug compatibility :-/
++    endstr0="<<<\n\0"   # Bug to bug compatibility :-/
+     start_netstr="###\n"
+     end_netstr="%%%\n"
+-    __str__ = UserDict.__repr__	 # use default __str__ function
++    __str__ = UserDict.__repr__          # use default __str__ function
+ 
+ 
+     def __init__(self, *args):
+ 
+-    	'''Initialize the ha_msg according to the parameters we're given'''
++        '''Initialize the ha_msg according to the parameters we're given'''
+ 
+         self.data = {}
+-	for arg in args:
++        for arg in args:
+             self.update(arg)
+ 
+     def update(self, *args):
+@@ -175,53 +175,53 @@ class ha_msg (UserDict):
+         '''Update the message from info in our arguments
+            We currently allow these kinds of arguments:
+              dictionary, ha_msg, tuple, list, string, file...
+-	'''
++        '''
+ #
+-#	It would be nice to check for type attributes rather than
+-#	for specific types...
++#       It would be nice to check for type attributes rather than
++#       for specific types...
+ #
+-	for arg in args:
++        for arg in args:
+ 
+             # Do we have a String?
+-            if isinstance(arg, types.StringType):
++            if isinstance(arg, bytes):
+                 self.fromstring(arg)
+ 
+             # Do we have a 2-element Tuple/List?
+-            elif (isinstance(arg, types.TupleType)
+-            or    isinstance(arg, types.ListType)):
++            elif (isinstance(arg, tuple)
++            or    isinstance(arg, list)):
+ 
+                 if len(arg) != 2: raise ValueError("wrong size tuple/list")
+                 self[arg[0]] = arg[1]
+ 
+             # Do we have a dictionary or ha_msg object?
+-            elif (isinstance(arg, types.DictType)
++            elif (isinstance(arg, dict)
+             or   (isinstance(arg, types.InstanceType)
+                   and issubclass(arg.__class__, UserDict))):
+ 
+-                for key in arg.keys():
+-		    self[key] = arg[key]
++                for key in list(arg.keys()):
++                    self[key] = arg[key]
+ 
+             # How about a file?
+             elif isinstance(arg, types.FileType):
+-    		self.fromfile(arg)
+-	    # or a socket?
+-	    elif isinstance(arg, socket.SocketType):
+-		self.fromsock(arg)
++                self.fromfile(arg)
++            # or a socket?
++            elif isinstance(arg, socket.SocketType):
++                self.fromsock(arg)
+             else: 
+-	      raise ValueError("bad type in update")
++              raise ValueError("bad type in update")
+ 
+-#	I can imagine more validation being useful...
+-#	The strings have more constraints than this code enforces...
+-#	They can't contain NULLs, or \r or \n
++#       I can imagine more validation being useful...
++#       The strings have more constraints than this code enforces...
++#       They can't contain NULLs, or \r or \n
+ #
+-#	The names should be legitimate environment var names
+-#	(for example, can't contain '=')
+-#	etc...
++#       The names should be legitimate environment var names
++#       (for example, can't contain '=')
++#       etc...
+ 
+     def __setitem__(self, k, value):
+-        if (not isinstance(k, types.StringType)
+-        or  not isinstance(k, types.StringType)):
+-		raise ValueError("non-string data")
++        if (not isinstance(k, bytes)
++        or  not isinstance(k, bytes)):
++                raise ValueError("non-string data")
+         self.data[k] = value
+ 
+     def __repr__(self):
+@@ -230,12 +230,12 @@ class ha_msg (UserDict):
+            that heartbeat expects us to use.
+         '''
+ 
+-	ret = ha_msg.startstr
+-        for i in self.items():
++        ret = ha_msg.startstr
++        for i in list(self.items()):
+             ret = ret + i[0] + "=" + i[1] + "\n"
+-	ret = ret + ha_msg.endstr
++        ret = ret + ha_msg.endstr
+ 
+-	if len(ret) <= ha_msg.max_reprlen:
++        if len(ret) <= ha_msg.max_reprlen:
+             return ret
+         raise ValueError("message length error")
+ 
+@@ -249,54 +249,54 @@ class ha_msg (UserDict):
+            (like comes from heartbeat or __repr__())
+         '''
+ 
+-	if  (s[:len(ha_msg.start_netstr)] == ha_msg.start_netstr
+-	and  s[-len(ha_msg.end_netstr):] == ha_msg.end_netstr) :
+-		return self.from_netstring(s[len(ha_msg.start_netstr):-len(ha_msg.end_netstr)])
+-
+-	#
+-	# It should start w/ha_msg.startstr, and end w/ha_msg.endstr
+-	#
+-	if  (s[:len(ha_msg.startstr)] != ha_msg.startstr
+-	or   (s[-len(ha_msg.endstr):] != ha_msg.endstr and
+-	      s[-len(ha_msg.endstr0):] != ha_msg.endstr0)) :
+-		raise ValueError("message format error")
++        if  (s[:len(ha_msg.start_netstr)] == ha_msg.start_netstr
++        and  s[-len(ha_msg.end_netstr):] == ha_msg.end_netstr) :
++                return self.from_netstring(s[len(ha_msg.start_netstr):-len(ha_msg.end_netstr)])
++
++        #
++        # It should start w/ha_msg.startstr, and end w/ha_msg.endstr
++        #
++        if  (s[:len(ha_msg.startstr)] != ha_msg.startstr
++        or   (s[-len(ha_msg.endstr):] != ha_msg.endstr and
++              s[-len(ha_msg.endstr0):] != ha_msg.endstr0)) :
++                raise ValueError("message format error")
+ 
+ 
+         #
+         # Split up the string into lines, and process each
+-	# line as a name=value pair
++        # line as a name=value pair
+         #
+-	strings = s.split('\n')[1:-2]
++        strings = s.split('\n')[1:-2]
+         for astring in strings:
+             # Update-from-list is handy here...
+-	    # FT_STRING, standard plain text string field
+-	    # in the "classic" (not netstring) message format,
+-	    # this is sent as, you guessed right, plain text string,
+-	    # no leading "(type)" indicator.
+-	    if astring[0] != "(":
+-		self.update(astring.split('=', 1))
+-	    # else: 
+-	    #   (1) FT_BINARY
+-	    #   (2) FT_STRUCT
+-	    #   (3) FT_LIST
+-	    #   (4) FT_COMPRESS
+-	    #   (5) FT_UNCOMPRESS
+-	    #   IGNORE THESE FOR NOW.
++            # FT_STRING, standard plain text string field
++            # in the "classic" (not netstring) message format,
++            # this is sent as, you guessed right, plain text string,
++            # no leading "(type)" indicator.
++            if astring[0] != "(":
++                self.update(astring.split('=', 1))
++            # else: 
++            #   (1) FT_BINARY
++            #   (2) FT_STRUCT
++            #   (3) FT_LIST
++            #   (4) FT_COMPRESS
++            #   (5) FT_UNCOMPRESS
++            #   IGNORE THESE FOR NOW.
+ 
+     def from_netstring(self, s):
+-	l = netstring_decode(s)
+-	for astring in iter(l):
+-	    if astring[:3] == "(0)":
+-		# FT_STRING, standard plain text string field
+-		self.update(astring[3:].split("=", 1))
+-	    # else: 
+-	    #   (1) FT_BINARY
+-	    #   (2) FT_STRUCT
+-	    #   (3) FT_LIST
+-	    #   (4) FT_COMPRESS
+-	    #   (5) FT_UNCOMPRESS
+-	    #   IGNORE THESE FOR NOW.
+-	    #	self.update(astring.split("=", 1))
++        l = netstring_decode(s)
++        for astring in iter(l):
++            if astring[:3] == "(0)":
++                # FT_STRING, standard plain text string field
++                self.update(astring[3:].split("=", 1))
++            # else: 
++            #   (1) FT_BINARY
++            #   (2) FT_STRUCT
++            #   (3) FT_LIST
++            #   (4) FT_COMPRESS
++            #   (5) FT_UNCOMPRESS
++            #   IGNORE THESE FOR NOW.
++            #   self.update(astring.split("=", 1))
+ 
+     def fromfile(self, f):
+ 
+@@ -318,27 +318,27 @@ class ha_msg (UserDict):
+             line = f.readline()
+             if line == "" : raise ValueError("EOF")
+             delimfound = (line == ha_msg.endstr)
+-	    if not delimfound: self.update(line[:-1].split('=', 1))
++            if not delimfound: self.update(line[:-1].split('=', 1))
+ 
+     def fromsock(self, s):
+-	len_magic = ''
+-	len_magic = s.recv(8, socket.MSG_WAITALL)
+-	if len(len_magic) < 8:
+-		# should not happen, would have raised socket.error already
+-		raise ValueError("short recv expecting 8 byte header")
+-	(l, magic) = struct.unpack("II", len_magic)
+-	msg = s.recv(l, socket.MSG_WAITALL)
+-	dbg(2, "RECEIVED MESSAGE", msg)
+-	if len(msg) < l:
+-		raise ValueError("short recv expecting %u byte payload" % l)
+-	self.fromstring(msg)
+-	dbg(3, "PARSED AS: ", repr(self))
++        len_magic = ''
++        len_magic = s.recv(8, socket.MSG_WAITALL)
++        if len(len_magic) < 8:
++                # should not happen, would have raised socket.error already
++                raise ValueError("short recv expecting 8 byte header")
++        (l, magic) = struct.unpack("II", len_magic)
++        msg = s.recv(l, socket.MSG_WAITALL)
++        dbg(2, "RECEIVED MESSAGE", msg)
++        if len(msg) < l:
++                raise ValueError("short recv expecting %u byte payload" % l)
++        self.fromstring(msg)
++        dbg(3, "PARSED AS: ", repr(self))
+ 
+     def tosock(self, s):
+         '''Send an ha_msg to a socket, and flush it.'''
+-	msg = repr(self)
+-	dbg(2, "SENDING", msg)
+-	s.sendall(struct.pack("II", len(msg), 0xabcd) + msg)
++        msg = repr(self)
++        dbg(2, "SENDING", msg)
++        s.sendall(struct.pack("II", len(msg), 0xabcd) + msg)
+         return 1
+ 
+ class hb_api:
+@@ -350,12 +350,12 @@ class hb_api:
+     the cluster, and to receive messages from the cluster.
+     '''
+ #
+-#	Probably the exceptions we trap should have messages that
+-#	go along with them, since they shouldn't happen.
++#       Probably the exceptions we trap should have messages that
++#       go along with them, since they shouldn't happen.
+ #
+ 
+ #
+-#	Various constants that are part of the heartbeat API
++#       Various constants that are part of the heartbeat API
+ #
+     SIGNON="signon"
+     SIGNOFF="signoff"
+@@ -378,7 +378,7 @@ class hb_api:
+     _pid=os.getpid()
+ 
+     def __init__(self, debug=0):
+-	global debug_level
++        global debug_level
+         self.SignedOn=0
+         self.socket = None
+         self.iscasual=1
+@@ -386,10 +386,10 @@ class hb_api:
+         self.Callbacks = {}
+         self.NodeCallback = None
+         self.IFCallback = None
+-	self.Nodes = None
+-	self.hbversion = None
+-	self.pacemaker = None
+-	debug_level = debug
++        self.Nodes = None
++        self.hbversion = None
++        self.pacemaker = None
++        debug_level = debug
+ 
+     def __del__(self):
+         '''hb_api class destructor.
+@@ -406,7 +406,7 @@ class hb_api:
+ 
+         '''Create a standard boilerplate API message'''
+ 
+-	return ha_msg(
++        return ha_msg(
+            { ha_msg.F_TYPE   : ha_msg.T_APIREQ,
+              ha_msg.F_APIREQ : msgtype,
+              ha_msg.F_PID    : repr(hb_api._pid),
+@@ -439,18 +439,18 @@ class hb_api:
+         if self.NodeCallback and (msgtype == ha_msg.T_STATUS
+         or                        msgtype == ha_msg.T_NS_STATUS):
+             node=msg[ha_msg.F_ORIG]
+-	    stat=msg[ha_msg.F_STATUS]
++            stat=msg[ha_msg.F_STATUS]
+             self.NodeCallback[0](node, stat, self.NodeCallback[1])
+             return 1
+ 
+         if self.IFCallback and msgtype == ha_msg.T_IFSTATUS:
+             node=msg[ha_msg.F_NODE]
+-	    iface=msg[ha_msg.F_IFNAME]
++            iface=msg[ha_msg.F_IFNAME]
+             stat=msg[ha_msg.F_STATUS]
+             self.IFCallback[0](node, iface, stat, self.IFCallback[1])
+             return 1
+ 
+-        if self.Callbacks.has_key(msgtype):
++        if msgtype in self.Callbacks:
+             entry = self.Callbacks[msgtype]
+             entry[0](msg, entry[1])
+             return 1
+@@ -464,16 +464,16 @@ class hb_api:
+         if len(self.MsgQ) > 0:
+             return self.MsgQ.pop(0)
+ 
+-	if timeout and not self.msgready(timeout=timeout):
+-	    return None
+-	elif not blocking and not self.msgready(timeout=0):
++        if timeout and not self.msgready(timeout=timeout):
++            return None
++        elif not blocking and not self.msgready(timeout=0):
+             return None
+ 
+         # ok, if msgready returned True,
+-	# but we only have a partial message in the socket buffer,
+-	# and the socket has its default timeout of "None",
+-	# we will still potentially block "forever"...
+-	# but half-delivered messages "should not happen"...
++        # but we only have a partial message in the socket buffer,
++        # and the socket has its default timeout of "None",
++        # we will still potentially block "forever"...
++        # but half-delivered messages "should not happen"...
+ 
+         try:
+             return ha_msg(self.socket)
+@@ -504,13 +504,13 @@ class hb_api:
+ 
+         if self.socket:
+             msg = self.__api_msg(hb_api.SIGNOFF)
+-	    try:
+-		    msg.tosock(self.socket)
+-		    self.socket.close()
+-	    except socket.error, e:
+-		    # may already be closed by the remote side
+-		    pass
+-	    self.socket = None
++            try:
++                    msg.tosock(self.socket)
++                    self.socket.close()
++            except socket.error as e:
++                    # may already be closed by the remote side
++                    pass
++            self.socket = None
+         self.SignedOn=0
+ 
+     def signon(self, service=None):
+@@ -527,41 +527,41 @@ class hb_api:
+ 
+         self.OurNode = os.uname()[1].lower()
+ 
+-	msg = hb_api.__api_msg(self, hb_api.SIGNON)
+-	msg.update({
+-	 "uid" : "%u" % os.getuid(),
+-	 "gid" : "%u" % os.getgid() })
++        msg = hb_api.__api_msg(self, hb_api.SIGNON)
++        msg.update({
++         "uid" : "%u" % os.getuid(),
++         "gid" : "%u" % os.getgid() })
+ 
+         try:
+             s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+             s.connect(hb_register_socket_name);
+-        except socket.error, e:
+-            print >> sys.stderr, "connect(%s): %s" % (hb_register_socket_name, e)
++        except socket.error as e:
++            print("connect(%s): %s" % (hb_register_socket_name, e), file=sys.stderr)
+ 
+         # Send the registration request
+-	msg.tosock(s)
+-	self.socket = s
++        msg.tosock(s)
++        self.socket = s
+ 
+         try:
+             # Read the reply
+             reply = self.__get_reply()
+ 
+-	    # Read the return code
++            # Read the return code
+             rc =  reply[ha_msg.F_APIRESULT]
+ 
+             if rc == hb_api.OK :
+-		self.socket = s
++                self.socket = s
+                 self.SignedOn=1
+-		if "hbversion" in reply:
+-			self.hbversion = reply["hbversion"]
+-		if "pacemaker" in reply:
+-			self.pacemaker = reply["pacemaker"]
++                if "hbversion" in reply:
++                        self.hbversion = reply["hbversion"]
++                if "pacemaker" in reply:
++                        self.pacemaker = reply["pacemaker"]
+                 return 1
+-	    self.signoff()
++            self.signoff()
+             return None
+ 
+         except (KeyError,ValueError,TypeError):
+-	    self.signoff()
++            self.signoff()
+             return None
+ 
+     def setfilter(self, fmask):
+@@ -573,7 +573,7 @@ class hb_api:
+ 
+         msg = hb_api.__api_msg(self, hb_api.SETFILTER)
+         msg[ha_msg.F_FILTERMASK] = "%x" % fmask
+-	msg.tosock(self.socket)
++        msg.tosock(self.socket)
+ 
+         try:
+             reply = self.__get_reply()
+@@ -593,7 +593,7 @@ class hb_api:
+         msg = hb_api.__api_msg(self, hb_api.SETSIGNAL)
+         msg[ha_msg.F_SIGNAL] = "%d" % signal
+ 
+-	msg.tosock(self.socket)
++        msg.tosock(self.socket)
+ 
+         try:
+             reply = self.__get_reply()
+@@ -611,14 +611,14 @@ class hb_api:
+ 
+         '''Retrieve the list of nodes in the cluster'''
+ 
+-	if usecache and self.Nodes != None:
+-	    return self.Nodes
++        if usecache and self.Nodes != None:
++            return self.Nodes
+ 
+-	self.Nodes = None
+-	Nodes = {}
+-	msg = hb_api.__api_msg(self, hb_api.NODELIST)
++        self.Nodes = None
++        Nodes = {}
++        msg = hb_api.__api_msg(self, hb_api.NODELIST)
+ 
+-	msg.tosock(self.socket)
++        msg.tosock(self.socket)
+ 
+         try:
+             while 1:
+@@ -627,17 +627,17 @@ class hb_api:
+                 if rc != hb_api.OK and rc != hb_api.MORE:
+                     return None
+ 
+-		nodename = reply[ha_msg.F_NODENAME]
+-		node = { "name" : nodename }
+-		if ha_msg.F_NODETYPE in reply:
+-		    node['type'] = reply[ha_msg.F_NODETYPE]
+-		if ha_msg.F_STATUS in reply:
+-		    node['status'] = reply[ha_msg.F_STATUS]
++                nodename = reply[ha_msg.F_NODENAME]
++                node = { "name" : nodename }
++                if ha_msg.F_NODETYPE in reply:
++                    node['type'] = reply[ha_msg.F_NODETYPE]
++                if ha_msg.F_STATUS in reply:
++                    node['status'] = reply[ha_msg.F_STATUS]
+ 
+                 Nodes[nodename] = node
+ 
+                 if rc == hb_api.OK :
+-		   self.Nodes = Nodes
++                   self.Nodes = Nodes
+                    return Nodes
+                 elif rc == hb_api.MORE:
+                    continue
+@@ -652,10 +652,10 @@ class hb_api:
+         '''Retrieve the list of interfaces to the given node'''
+ 
+         Interfaces = {}
+-	msg = hb_api.__api_msg(self, hb_api.IFLIST)
++        msg = hb_api.__api_msg(self, hb_api.IFLIST)
+         msg[ha_msg.F_NODENAME] = node
+ 
+-	msg.tosock(self.socket)
++        msg.tosock(self.socket)
+ 
+         try:
+             while 1:
+@@ -664,18 +664,18 @@ class hb_api:
+                 if rc != hb_api.OK and rc != hb_api.MORE :
+                     return None
+ 
+-		ifname = reply[ha_msg.F_IFNAME]
+-		if ha_msg.F_STATUS in reply:
+-		    ifstat = reply[ha_msg.F_STATUS]
+-		else:
+-		    ifstat = None
+-
+-		# Don't put duplicates in the list.
+-		# This would happen for example if you have
+-		# multiple ucast statements (one for each node)
+-		# on the same interface
+-		if not ifname in Interfaces:
+-		    Interfaces[ifname] = ifstat
++                ifname = reply[ha_msg.F_IFNAME]
++                if ha_msg.F_STATUS in reply:
++                    ifstat = reply[ha_msg.F_STATUS]
++                else:
++                    ifstat = None
++
++                # Don't put duplicates in the list.
++                # This would happen for example if you have
++                # multiple ucast statements (one for each node)
++                # on the same interface
++                if not ifname in Interfaces:
++                    Interfaces[ifname] = ifstat
+ 
+                 if rc == hb_api.OK :
+                    return Interfaces
+@@ -691,11 +691,11 @@ class hb_api:
+ 
+         '''Retrieve the status of the given node'''
+ 
+-	msg = hb_api.__api_msg(self, hb_api.NODESTATUS)
+-	msg[ha_msg.F_NODENAME]=node
++        msg = hb_api.__api_msg(self, hb_api.NODESTATUS)
++        msg[ha_msg.F_NODENAME]=node
+ 
+ 
+-	msg.tosock(self.socket)
++        msg.tosock(self.socket)
+ 
+         try:
+ 
+@@ -713,10 +713,10 @@ class hb_api:
+ 
+         '''Retrieve the value of the named parameter'''
+ 
+-	msg = hb_api.__api_msg(self, hb_api.GETPARM)
+-	msg[ha_msg.F_PNAME]=pname
++        msg = hb_api.__api_msg(self, hb_api.GETPARM)
++        msg[ha_msg.F_PNAME]=pname
+ 
+-	msg.tosock(self.socket)
++        msg.tosock(self.socket)
+ 
+         try:
+ 
+@@ -728,27 +728,27 @@ class hb_api:
+             return reply[ha_msg.F_PVALUE]
+ 
+         except (KeyError, ValueError):
+-	    if pname == "pacemaker":
+-		return self.getparm("crm")
++            if pname == "pacemaker":
++                return self.getparm("crm")
+             return None
+ 
+     def get_hbversion(self):
+-	if self.hbversion == None:
+-	    self.hbversion = self.getparm("hbversion")
+-	return self.hbversion
++        if self.hbversion == None:
++            self.hbversion = self.getparm("hbversion")
++        return self.hbversion
+ 
+     def get_pacemaker(self):
+-	if self.pacemaker == None:
+-	    self.pacemaker = self.getparm("pacemaker")
+-	return self.pacemaker
++        if self.pacemaker == None:
++            self.pacemaker = self.getparm("pacemaker")
++        return self.pacemaker
+ 
+     def getrsc(self):
+ 
+         '''Retrieve the value of the named parameter'''
+ 
+-	msg = hb_api.__api_msg(self, hb_api.GETRESOURCES)
++        msg = hb_api.__api_msg(self, hb_api.GETRESOURCES)
+ 
+-	msg.tosock(self.socket)
++        msg.tosock(self.socket)
+ 
+         try:
+             reply = self.__get_reply()
+@@ -765,10 +765,10 @@ class hb_api:
+ 
+         '''Retrieve the node-type of the given node ("normal" or "ping")'''
+ 
+-	msg = hb_api.__api_msg(self, hb_api.NODETYPE)
+-	msg[ha_msg.F_NODENAME]=node
++        msg = hb_api.__api_msg(self, hb_api.NODETYPE)
++        msg[ha_msg.F_NODENAME]=node
+ 
+-	msg.tosock(self.socket)
++        msg.tosock(self.socket)
+ 
+         try:
+ 
+@@ -786,11 +786,11 @@ class hb_api:
+ 
+         '''Retrieve the status of the given interface on the given node'''
+ 
+-	msg = hb_api.__api_msg(self, hb_api.IFSTATUS)
+-	msg[ha_msg.F_NODENAME]=node
+-	msg[ha_msg.F_IFNAME]=interface
++        msg = hb_api.__api_msg(self, hb_api.IFSTATUS)
++        msg[ha_msg.F_NODENAME]=node
++        msg[ha_msg.F_IFNAME]=interface
+ 
+-	msg.tosock(self.socket)
++        msg.tosock(self.socket)
+ 
+         try:
+ 
+@@ -812,15 +812,15 @@ class hb_api:
+         '''
+ 
+         Nodes = self.nodelist()
+-        for (nodename, node) in Nodes.iteritems():
+-	    if not 'status' in node:
+-		node["status"] = self.nodestatus(nodename)
+-	    if not 'type' in node:
+-		node["type"] = self.nodetype(nodename)
++        for (nodename, node) in Nodes.items():
++            if not 'status' in node:
++                node["status"] = self.nodestatus(nodename)
++            if not 'type' in node:
++                node["type"] = self.nodetype(nodename)
+             interfaces = self.iflist(nodename)
+-            for (ifname, ifstat) in interfaces.iteritems():
+-		if ifstat == None:
+-		   interfaces[ifname] = self.ifstatus(nodename, ifname)
++            for (ifname, ifstat) in interfaces.items():
++                if ifstat == None:
++                   interfaces[ifname] = self.ifstatus(nodename, ifname)
+             node["interfaces"] = interfaces
+         return Nodes
+ 
+@@ -830,11 +830,11 @@ class hb_api:
+         '''
+         if status == None: status=hb_api.ActiveStatus
+         ret = []
+-        for (nodename, node) in self.nodelist().iteritems():
+-	    if "status" in node:
+-		nodestatus = node["status"]
+-	    else:
+-		nodestatus = self.nodestatus(nodename)
++        for (nodename, node) in self.nodelist().items():
++            if "status" in node:
++                nodestatus = node["status"]
++            else:
++                nodestatus = self.nodestatus(nodename)
+             if nodestatus == status:
+                 ret.append(nodename)
+         return ret
+@@ -873,7 +873,7 @@ class hb_api:
+ 
+         msg =ha_msg(origmsg)
+         msg[ha_msg.F_ORIG] = self.OurNode
+-	return msg.tosock(self.socket)
++        return msg.tosock(self.socket)
+ 
+     def sendnodemsg(self, origmsg, node):
+ 
+@@ -886,7 +886,7 @@ class hb_api:
+         msg[ha_msg.F_ORIG] = self.OurNode
+         msg[ha_msg.F_TO] = node
+ 
+-	return msg.tosock(self.socket)
++        return msg.tosock(self.socket)
+ 
+ 
+     def set_msg_callback(self, msgtype, callback, data):
+@@ -896,13 +896,13 @@ class hb_api:
+            that particular message type.
+         '''
+ 
+-        if self.Callbacks.has_key(msgtype) :
++        if msgtype in self.Callbacks :
+             ret=self.Callbacks[msgtype]
+         else:
+             ret=None
+ 
+         if callback == None :
+-            if self.Callbacks.has_key(msgtype) :
++            if msgtype in self.Callbacks :
+                 del self.Callbacks[msgtype]
+             return ret
+ 
+@@ -941,20 +941,20 @@ class hb_api:
+         return ret
+ 
+ def nodestatus(node, stat, data):
+-	try:
+-		prev = data[node]["status"]
++        try:
++                prev = data[node]["status"]
+         except (KeyError,ValueError):
+-		prev = "?"
+-	print "*** NODE STATUS CHANGE: %s now %s, was %s" % (node, stat, prev)
+-	data[node]["status"] = stat
++                prev = "?"
++        print("*** NODE STATUS CHANGE: %s now %s, was %s" % (node, stat, prev))
++        data[node]["status"] = stat
+ 
+ def ifstatus(node, iface, stat, data):
+-	try:
+-		prev = data[node]["interfaces"][iface]
++        try:
++                prev = data[node]["interfaces"][iface]
+         except (KeyError,ValueError):
+-		prev = "?"
+-	print "*** INTERFACE STATUS CHANGE: %s to %s now %s, was %s" % (iface, node, stat, prev)
+-	data[node]["interfaces"][iface] = stat
++                prev = "?"
++        print("*** INTERFACE STATUS CHANGE: %s to %s now %s, was %s" % (iface, node, stat, prev))
++        data[node]["interfaces"][iface] = stat
+ 
+ #
+ #   A little test code...
+@@ -965,8 +965,8 @@ def main(argv):
+ 
+     hb = hb_api(debug=0)
+     if not hb.signon():
+-	print "Cannot signon to heartbeat API"
+-	exit(1)
++        print("Cannot signon to heartbeat API")
++        exit(1)
+ 
+     dbg(1, "Now signed on to heartbeat API...")
+     dbg(1, "Asking for node and link status ...")
+@@ -975,26 +975,26 @@ def main(argv):
+     # but ...
+     config = hb.cluster_config()
+ 
+-    print "Heartbeat Version:", hb.get_hbversion()
++    print("Heartbeat Version:", hb.get_hbversion())
+     pacemaker = hb.get_pacemaker()
+     if pacemaker in ["false", "off", "no", "n", "0"]:
+-	    print "Resources:", hb.getrsc()
++            print("Resources:", hb.getrsc())
+     else:
+-	    print "Pacemaker:", pacemaker
++            print("Pacemaker:", pacemaker)
+ 
+-    print "\nNodes in cluster:", config.keys()
+-    for node in config.keys():
+-	 type = config[node]["type"]
+-	 state = config[node]["status"]
+-         print "\nStatus of %s node %s: %s" %  (type, node, state)
+-	 iflist = config[node]["interfaces"].keys()
+-         print "\tInterfaces to %s: %s" % (node, iflist)
++    print("\nNodes in cluster:", list(config.keys()))
++    for node in list(config.keys()):
++         type = config[node]["type"]
++         state = config[node]["status"]
++         print("\nStatus of %s node %s: %s" %  (type, node, state))
++         iflist = list(config[node]["interfaces"].keys())
++         print("\tInterfaces to %s: %s" % (node, iflist))
+          for intf in iflist:
+              state = config[node]["interfaces"][intf]
+-             print "\tInterface %s to %s: %s" % (intf, node, state)
++             print("\tInterface %s to %s: %s" % (intf, node, state))
+ 
+     if not '--monitor' in argv:
+-	return
++        return
+ 
+     dbg(0, "\nListening for node or link status changes...\n")
+     hb.set_nstatus_callback(nodestatus, config)
+@@ -1006,9 +1006,9 @@ def main(argv):
+ 
+ if __name__ == '__main__':
+     try:
+-	main(sys.argv)
++        main(sys.argv)
+     except KeyboardInterrupt:
+-	pass
+-    except socket.error, e:
+-	print "Socket error: %s" % e
+-	exit(1)
++        pass
++    except socket.error as e:
++        print("Socket error: %s" % e)
++        exit(1)
+Index: heartbeat-3.0.6/cts/CM_LinuxHAv2.py.in
+===================================================================
+--- heartbeat-3.0.6.orig/cts/CM_LinuxHAv2.py.in
++++ heartbeat-3.0.6/cts/CM_LinuxHAv2.py.in
+@@ -158,7 +158,7 @@ class LinuxHAv2(HeartbeatCM):
+             self.log("Node %s is not up." % node)
+             return None
+ 
+-        if not self.CIBsync.has_key(node) and self.Env["ClobberCIB"] == 1:
++        if node not in self.CIBsync and self.Env["ClobberCIB"] == 1:
+             self.CIBsync[node] = 1
+             self.rsh.remote_py(node, "os", "system", "rm -f @HA_VARLIBDIR@/heartbeat/crm/cib.xml")
+             self.rsh.remote_py(node, "os", "system", "rm -f @HA_VARLIBDIR@/heartbeat/crm/cib.xml.sig")
+Index: heartbeat-3.0.6/cts/CM_hb.py.in
+===================================================================
+--- heartbeat-3.0.6.orig/cts/CM_hb.py.in
++++ heartbeat-3.0.6/cts/CM_hb.py.in
+@@ -373,10 +373,10 @@ class HBConfig:
+         # We allow each resource group to have its own failover/back
+         # policies
+         #
+-        if self.Parameters.has_key("nice_failback")         \
++        if "nice_failback" in self.Parameters         \
+         and                self.Parameters["nice_failback"] == "on":
+             HBConfig.DefaultFailbackPolicy = no_failback
+-        elif self.Parameters.has_key("auto_failback")         \
++        elif "auto_failback" in self.Parameters         \
+         and                self.Parameters["auto_failback"] == "off":
+             HBConfig.DefaultFailbackPolicy = no_failback
+         else:
+@@ -402,11 +402,11 @@ class HBConfig:
+             key = tokens[0]
+             values = tokens[1:]
+ 
+-            if HBConfig.MultiTokenKeywords.has_key(key):
++            if key in HBConfig.MultiTokenKeywords:
+                 # group items from this line together, and separate
+                 # from the items on other lines
+                 values = [values]
+-            if self.Parameters.has_key(key):
++            if key in self.Parameters:
+                 if key == "node":
+                     self.Parameters[key].extend(values)
+                 else:
+@@ -463,7 +463,7 @@ class HBConfig:
+                 rscargs.append(Resource(name, args))
+             name = tokens[0] + "__" + tokens[1]
+ 
+-            assert not self.ResourceGroups.has_key(name)
++            assert name not in self.ResourceGroups
+ 
+             #
+             #        Create the resource group
+@@ -640,10 +640,10 @@ if __name__ == '__main__':
+         cf=HBConfig("/etc/ha.d")
+ 
+ 
+-        print "Cluster configuration:\n"
++        print("Cluster configuration:\n")
+ 
+-        print "Nodes:", cf.nodes(), "\n"
+-        print "Config Parameters:", cf.Parameters, "\n"
++        print(("Nodes:", cf.nodes(), "\n"))
++        print(("Config Parameters:", cf.Parameters, "\n"))
+ 
+-        for groupname in cf.ResourceGroups.keys():
+-            print "Resource Group %s:\n\t%s\n" % (groupname, cf.ResourceGroups[groupname])
++        for groupname in list(cf.ResourceGroups.keys()):
++            print(("Resource Group %s:\n\t%s\n" % (groupname, cf.ResourceGroups[groupname])))
+Index: heartbeat-3.0.6/cts/CTS.py.in
+===================================================================
+--- heartbeat-3.0.6.orig/cts/CTS.py.in
++++ heartbeat-3.0.6/cts/CTS.py.in
+@@ -110,7 +110,7 @@ class RemoteExec:
+         while count < 3:
+            rc = os.system(self._cmd(args))
+            if rc == 0: return rc
+-           print "Retrying command %s" % self._cmd(args)
++           print(("Retrying command %s" % self._cmd(args)))
+            count=count+1
+         return rc
+ 
+@@ -154,14 +154,14 @@ class RemoteExec:
+             rc = os.system(cpstring)
+             if rc == 0: 
+                 return rc
+-            print "Retrying command %s" % cpstring
++            print(("Retrying command %s" % cpstring))
+         return rc
+ 
+     def echo_cp(self, src_host, src_file, dest_host, dest_file):
+         '''Perform a remote copy via echo'''
+         (rc, lines) = self.remote_py(src_host, "os", "system", "cat %s" % src_file)
+         if rc != 0:
+-            print "Copy of %s:%s failed" % (src_host, src_file) 
++            print(("Copy of %s:%s failed" % (src_host, src_file))) 
+ 
+         elif dest_host == None:
+             fd = open(dest_file, "w")
+@@ -186,7 +186,7 @@ class RemoteExec:
+             rc = os.system(sshnoBlock)
+             if rc == 0: 
+                 return rc
+-            print "Retrying command %s" % sshnoBlock
++            print(("Retrying command %s" % sshnoBlock))
+         return rc
+  
+     def remote_py(self, node, module, func, *args):
+@@ -242,7 +242,7 @@ class LogWatcher:
+         self.whichmatch = -1
+         self.unmatched = None
+         if self.debug:
+-            print "Debug now on for for log", log
++            print(("Debug now on for for log", log))
+         self.Timeout = int(timeout)
+         self.returnonlymatch = None
+         if not os.access(log, os.R_OK):
+@@ -277,30 +277,30 @@ class LogWatcher:
+ 
+         done=time.time()+timeout+1
+         if self.debug:
+-            print "starting search: timeout=%d" % timeout
++            print(("starting search: timeout=%d" % timeout))
+             for regex in self.regexes:
+-                print "Looking for regex: ", regex
++                print(("Looking for regex: ", regex))
+ 
+         while (timeout <= 0 or time.time() <= done):
+             newsize=os.path.getsize(self.filename)
+-            if self.debug > 4: print "newsize = %d" % newsize
++            if self.debug > 4: print(("newsize = %d" % newsize))
+             if newsize < self.size:
+                 # Somebody truncated the log!
+-                if self.debug: print "Log truncated!"
++                if self.debug: print("Log truncated!")
+                 self.setwatch(frombeginning=1)
+                 continue
+             if newsize > self.file.tell():
+                 line=self.file.readline()
+-                if self.debug > 2: print "Looking at line:", line
++                if self.debug > 2: print(("Looking at line:", line))
+                 if line:
+                     last_line=line
+                     if not first_line:
+                         first_line=line
+-                        if self.debug: print "First line: "+ line
++                        if self.debug: print(("First line: "+ line))
+                     which=-1
+                     for regex in self.regexes:
+                         which=which+1
+-                        if self.debug > 3: print "Comparing line to ", regex
++                        if self.debug > 3: print(("Comparing line to ", regex))
+                         #matchobj = re.search(string.lower(regex), string.lower(line))
+                         matchobj = re.search(regex, line)
+                         if matchobj:
+@@ -308,18 +308,18 @@ class LogWatcher:
+                             if self.returnonlymatch:
+                               return matchobj.group(self.returnonlymatch)
+                             else:
+-                              if self.debug: print "Returning line"
++                              if self.debug: print("Returning line")
+                               return line
+             newsize=os.path.getsize(self.filename)
+             if self.file.tell() == newsize:
+                 if timeout > 0:
+                     time.sleep(0.025)
+                 else:
+-                    if self.debug: print "End of file"
+-                    if self.debug: print "Last line: "+last_line
++                    if self.debug: print("End of file")
++                    if self.debug: print(("Last line: "+last_line))
+                     return None
+-        if self.debug: print "Timeout"
+-        if self.debug: print "Last line: "+last_line
++        if self.debug: print("Timeout")
++        if self.debug: print(("Last line: "+last_line))
+         return None
+ 
+     def lookforall(self, timeout=None):
+@@ -418,7 +418,7 @@ class ClusterManager(UserDict):
+         None
+ 
+     def _finalConditions(self):
+-        for key in self.keys():
++        for key in list(self.keys()):
+             if self[key] == None:
+                 raise ValueError("Improper derivation: self[" + key
+                 +   "] must be overridden by subclass.")
+@@ -517,7 +517,7 @@ class ClusterManager(UserDict):
+         self.debug("Starting %s on node %s" %(self["Name"], node))
+         ret = 1
+ 
+-        if not self.ShouldBeStatus.has_key(node):
++        if node not in self.ShouldBeStatus:
+             self.ShouldBeStatus[node] = self["down"]
+ 
+         if self.ShouldBeStatus[node] != self["down"]:
+@@ -946,7 +946,7 @@ class Process(Component):
+         self.dc_pats = dc_pats
+         self.CM = cm
+         self.badnews_ignore = badnews_ignore
+-	self.triggersreboot = triggersreboot
++        self.triggersreboot = triggersreboot
+         self.KillCmd = "killall -9 " + self.name
+         
+     def kill(self, node):
+@@ -1106,7 +1106,7 @@ According to the manual page for ping:
+         '''Start the PingFest!'''
+ 
+         self.PingSize=1024
+-        if CM.Env.has_key("PingSize"):
++        if "PingSize" in CM.Env:
+                 self.PingSize=CM.Env["PingSize"]
+ 
+         CM.log("Starting %d byte flood pings" % self.PingSize)
+Index: heartbeat-3.0.6/cts/CTSaudits.py.in
+===================================================================
+--- heartbeat-3.0.6.orig/cts/CTSaudits.py.in
++++ heartbeat-3.0.6/cts/CTSaudits.py.in
+@@ -129,7 +129,7 @@ class ResourceAudit(ClusterAudit):
+                     +   "(otherRsc = " + repr(lastResource) + ")")
+                     Fatal = 1
+ 
+-                if self.CM.Env.has_key("SuppressMonitoring") and \
++                if "SuppressMonitoring" in self.CM.Env and \
+                 self.CM.Env["SuppressMonitoring"]:
+                     continue
+ 
+@@ -257,7 +257,7 @@ class HAResourceAudit(ClusterAudit):
+                     +        repr(RunningNodes))
+                     passed = 0
+             else:
+-                if not NumofInc.has_key(resource.inc_name):
++                if resource.inc_name not in NumofInc:
+                     NumofInc[resource.inc_name]=0
+                     MaxofInc[resource.inc_name]=resource.inc_max
+                 running = 1
+@@ -281,7 +281,7 @@ class HAResourceAudit(ClusterAudit):
+                     NumofInc[resource.inc_name] += 1
+ 
+         if self.CM.HasQuorum(None):
+-            for inc_name in NumofInc.keys():
++            for inc_name in list(NumofInc.keys()):
+                 if NumofInc[inc_name] != min(up_count, MaxofInc[inc_name]):
+                     passed = 0
+                     self.CM.log("Cloned resource "+ str(inc_name)
+@@ -320,7 +320,7 @@ class HAResourceAudit(ClusterAudit):
+         for dependency in Dependancies:
+             if dependency["type"] == "placement" and dependency["strength"] == "must":
+                 if NodeofRsc[dependency["from"]] != NodeofRsc[dependency["to"]]:
+-                    print dependency["from"] + " and " + dependency["to"] + " should be run on same node"
++                    print((dependency["from"] + " and " + dependency["to"] + " should be run on same node"))
+                     passed = 0
+                   
+         return passed
+@@ -344,7 +344,7 @@ class CrmdStateAudit(ClusterAudit):
+         ,        "auditfail":0}
+ 
+     def has_key(self, key):
+-        return self.Stats.has_key(key)
++        return key in self.Stats
+ 
+     def __setitem__(self, key, value):
+         self.Stats[key] = value
+@@ -354,7 +354,7 @@ class CrmdStateAudit(ClusterAudit):
+ 
+     def incr(self, name):
+         '''Increment (or initialize) the value associated with the given name'''
+-        if not self.Stats.has_key(name):
++        if name not in self.Stats:
+             self.Stats[name]=0
+         self.Stats[name] = self.Stats[name]+1
+ 
+@@ -411,7 +411,7 @@ class CIBAudit(ClusterAudit):
+         ,        "auditfail":0}
+ 
+     def has_key(self, key):
+-        return self.Stats.has_key(key)
++        return key in self.Stats
+ 
+     def __setitem__(self, key, value):
+         self.Stats[key] = value
+@@ -421,7 +421,7 @@ class CIBAudit(ClusterAudit):
+     
+     def incr(self, name):
+         '''Increment (or initialize) the value associated with the given name'''
+-        if not self.Stats.has_key(name):
++        if name not in self.Stats:
+             self.Stats[name]=0
+         self.Stats[name] = self.Stats[name]+1
+ 
+@@ -518,7 +518,7 @@ class PartitionAudit(ClusterAudit):
+         self.NodeQuorum={}
+ 
+     def has_key(self, key):
+-        return self.Stats.has_key(key)
++        return key in self.Stats
+ 
+     def __setitem__(self, key, value):
+         self.Stats[key] = value
+@@ -528,7 +528,7 @@ class PartitionAudit(ClusterAudit):
+     
+     def incr(self, name):
+         '''Increment (or initialize) the value associated with the given name'''
+-        if not self.Stats.has_key(name):
++        if name not in self.Stats:
+             self.Stats[name]=0
+         self.Stats[name] = self.Stats[name]+1
+ 
+Index: heartbeat-3.0.6/cts/CTSlab.py.in
+===================================================================
+--- heartbeat-3.0.6.orig/cts/CTSlab.py.in
++++ heartbeat-3.0.6/cts/CTSlab.py.in
+@@ -214,31 +214,31 @@ class SysLog(Logger):
+     }
+     def __init__(self, labinfo):
+ 
+-        if labinfo.has_key("syslogsource"):
++        if "syslogsource" in labinfo:
+             self.source=labinfo["syslogsource"]
+         else:
+             self.source=SysLog.defaultsource
+ 
+-        if labinfo.has_key("SyslogFacility"):
++        if "SyslogFacility" in labinfo:
+             self.facility=labinfo["SyslogFacility"]
+         else:
+             self.facility=DefaultFacility
+ 
+-        if SysLog.map.has_key(self.facility):
++        if self.facility in SysLog.map:
+             self.facility=SysLog.map[self.facility]
+ 
+         syslog.openlog(self.source, 0, self.facility)
+ 
+     def setfacility(self, facility):
+         self.facility = facility
+-        if SysLog.map.has_key(self.facility):
++        if self.facility in SysLog.map:
+           self.facility=SysLog.map[self.facility]
+         syslog.closelog()
+         syslog.openlog(self.source, 0, self.facility)
+         
+ 
+     def __call__(self, lines):
+-        if isinstance(lines, types.StringType):
++        if isinstance(lines, bytes):
+             syslog.syslog(lines)
+         else:
+             for line in lines:
+@@ -254,7 +254,7 @@ class StdErrLog(Logger):
+ 
+     def __call__(self, lines):
+         t = time.strftime(Logger.TimeFormat, time.localtime(time.time()))  
+-        if isinstance(lines, types.StringType):
++        if isinstance(lines, bytes):
+             sys.__stderr__.writelines([t, lines, "\n"])
+         else:
+             for line in lines:
+@@ -279,7 +279,7 @@ class FileLog(Logger):
+         fd = open(self.logfile, "a")
+         t = time.strftime(Logger.TimeFormat, time.localtime(time.time()))  
+ 
+-        if isinstance(lines, types.StringType):
++        if isinstance(lines, bytes):
+             fd.writelines([t, self.hostname, self.source, lines, "\n"])
+         else:
+             for line in lines:
+@@ -335,22 +335,22 @@ class CtsLab(UserDict):
+         'Return TRUE if our object has the minimal set of keys/values in it'
+         result = 1
+         for key in self.MinimalKeys:
+-            if not self.has_key(key):
++            if key not in self:
+                 result = None
+         return result
+ 
+     def SupplyDefaults(self): 
+-        if not self.has_key("logger"):
++        if "logger" not in self:
+             self["logger"] = (SysLog(self), StdErrLog(self))
+-        if not self.has_key("reset"):
++        if "reset" not in self:
+             self["reset"] = Stonith()
+-        if not self.has_key("CMclass"):
++        if "CMclass" not in self:
+             self["CMclass"] = HeartbeatCM
+-        if not self.has_key("LogFileName"):
++        if "LogFileName" not in self:
+             self["LogFileName"] = "@HA_VARLOGDIR@/ha-log"
+-        if not self.has_key("logrestartcmd"):
++        if "logrestartcmd" not in self:
+             self["logrestartcmd"] = "@INITDIR@/syslog restart"
+-        if not self.has_key("logfacility"):
++        if "logfacility" not in self:
+             LogFacility = DefaultFacility
+ 
+         #
+@@ -360,7 +360,7 @@ class CtsLab(UserDict):
+ 
+         #  Get a random seed for the random number generator.
+ 
+-        if self.has_key("RandSeed"):
++        if "RandSeed" in self:
+             randseed = self["RandSeed"]
+             self.log("Random seed is: " + str(randseed))
+             self.RandomGen.seed(str(randseed)) 
+@@ -399,7 +399,7 @@ class CtsLab(UserDict):
+                 try:
+                     self.Nodes[node] = gethostbyname_ex(node)
+                 except:
+-                    print node+" not found in DNS... aborting"
++                    print((node+" not found in DNS... aborting"))
+                     raise
+         #
+         #        Reset Mechanism
+@@ -439,7 +439,7 @@ class CtsLab(UserDict):
+ 
+     def IsValidNode(self, node):
+         'Return TRUE if the given node is valid'
+-        return self.Nodes.has_key(node)
++        return node in self.Nodes
+ 
+     def __CheckNode(self, node):
+         "Raise a ValueError if the given node isn't valid"
+@@ -465,8 +465,8 @@ class CtsLab(UserDict):
+         return ret
+ 
+ def usage(arg):
+-    print "Illegal argument " + arg
+-    print "usage: " + sys.argv[0]  \
++    print(("Illegal argument " + arg))
++    print(("usage: " + sys.argv[0]  \
+     +  " --directory config-directory" \
+     +  " -D config-directory" \
+     +  " --logfile system-logfile-name" \
+@@ -495,7 +495,7 @@ def usage(arg):
+     +  " --suppress_cib_writes (1 | 0 | yes | no)" \
+     +  " -lstests" \
+     +  " --seed" \
+-    +  "  [number-of-iterations]"
++    +  "  [number-of-iterations]"))
+     sys.exit(1)
+ 
+     
+@@ -685,15 +685,15 @@ if __name__ == '__main__':
+             node_list.pop(len(node_list)-1)
+ 
+     if LogFacility == None:
+-        if config.Parameters.has_key("logfacility"): 
++        if "logfacility" in config.Parameters: 
+             LogFacility = config.Parameters["logfacility"][0]
+         else:
+             LogFacility = DefaultFacility
+ 
+     if LimitNodes > 0:
+         if len(node_list) > LimitNodes:
+-            print("Limiting the number of nodes configured=%d (max=%d)"
+-                  %(len(node_list), LimitNodes))
++            print(("Limiting the number of nodes configured=%d (max=%d)"
++                  %(len(node_list), LimitNodes)))
+             while len(node_list) > LimitNodes:
+                 node_list.pop(len(node_list)-1)
+ 
+@@ -726,7 +726,7 @@ if __name__ == '__main__':
+     Environment["logfacility"] = LogFacility
+     Environment["oprofile"] = oprofile
+ 
+-    if config.Parameters.has_key("use_logd"):
++    if "use_logd" in config.Parameters:
+         Environment["use_logd"] = 1
+     
+     if Version == 2:
+@@ -772,7 +772,7 @@ if __name__ == '__main__':
+     cm.log("Enable Fencing:   %d" % Environment["DoFencing"])
+     cm.log("Enable Standby:   %d" % Environment["DoStandby"])
+     cm.log("Enable Resources: %d" % Environment["CIBResource"])
+-    if Environment.has_key("SuppressMonitoring") \
++    if "SuppressMonitoring" in Environment \
+     and Environment["SuppressMonitoring"]:
+         cm.log("Resource Monitoring is disabled")
+     cm.ns.WaitForAllNodesToComeUp(config.Parameters["node"])
+Index: heartbeat-3.0.6/cts/CTSproxy.py.in
+===================================================================
+--- heartbeat-3.0.6.orig/cts/CTSproxy.py.in
++++ heartbeat-3.0.6/cts/CTSproxy.py.in
+@@ -29,35 +29,35 @@ import sys, pickle, base64, binascii
+ 
+ # check the number of arguments
+ if len(sys.argv) != 4 :
+-        print "usage %s module function args"%sys.argv[0]
++        print(("usage %s module function args"%sys.argv[0]))
+         sys.exit(1)
+ 
+ # import the module        
+ try :
+         module = __import__(sys.argv[1], globals(), locals(), [])
+ except ImportError:
+-        print "can not find module %s"%sys.argv[1]
++        print(("can not find module %s"%sys.argv[1]))
+         sys.exit(1)
+ 
+ # find the function
+ try :
+         func = getattr(module,sys.argv[2])
+ except        AttributeError:
+-        print "can not find function %s"%sys.argv[2]
++        print(("can not find function %s"%sys.argv[2]))
+         sys.exit(1)
+ 
+ # unpack the arguments of functions
+ try :
+         args = pickle.loads(binascii.a2b_base64(sys.argv[3]))
+ except  IndexError:
+-        print "can not unpickle args %s"%sys.argv[3]
++        print(("can not unpickle args %s"%sys.argv[3]))
+         sys.exit(1)
+         
+ # call the function and return packed result
+ try :
+-        result = apply(func,args)
+-        print binascii.b2a_base64(pickle.dumps(result))
++        result = func(*args)
++        print((binascii.b2a_base64(pickle.dumps(result))))
+         sys.exit(0)
+ except TypeError:
+-        print "parameter error"
++        print("parameter error")
+         sys.exit(1)
+Index: heartbeat-3.0.6/cts/CTStests.py.in
+===================================================================
+--- heartbeat-3.0.6.orig/cts/CTStests.py.in
++++ heartbeat-3.0.6/cts/CTStests.py.in
+@@ -85,7 +85,7 @@ class RandomTests:
+         
+     def incr(self, name):
+         '''Increment (or initialize) the value associated with the given name'''
+-        if not self.Stats.has_key(name):
++        if name not in self.Stats:
+             self.Stats[name]=0
+         self.Stats[name] = self.Stats[name]+1
+ 
+@@ -102,14 +102,14 @@ class RandomTests:
+                 ignorelist.extend(test.errorstoignore())
+ 
+             while errcount < 1000:
+-                if BadNewsDebug: print "Looking for BadNews"
++                if BadNewsDebug: print("Looking for BadNews")
+                 match=BadNews.look(0)
+                 if match:
+-                   if BadNewsDebug: print "BadNews found: "+match
++                   if BadNewsDebug: print(("BadNews found: "+match))
+                    add_err = 1
+                    for ignore in ignorelist:
+                        if add_err == 1 and re.search(ignore, match):
+-                           if BadNewsDebug: print "Ignoring based on pattern: ("+ignore+")"
++                           if BadNewsDebug: print(("Ignoring based on pattern: ("+ignore+")"))
+                            add_err = 0
+                    if add_err == 1:
+                        self.CM.log("BadNews: " + match)
+@@ -218,7 +218,7 @@ random for the selected number of iterat
+             stoptime=time.time()
+             elapsed_time = stoptime - starttime
+             test_time = stoptime - test.starttime
+-            if not test.has_key("min_time"):
++            if "min_time" not in test:
+                 test["elapsed_time"] = elapsed_time
+                 test["min_time"] = test_time
+                 test["max_time"] = test_time
+@@ -273,7 +273,7 @@ class CTSTest:
+         self.starttime=0
+ 
+     def has_key(self, key):
+-        return self.Stats.has_key(key)
++        return key in self.Stats
+ 
+     def __setitem__(self, key, value):
+         self.Stats[key] = value
+@@ -283,7 +283,7 @@ class CTSTest:
+ 
+     def incr(self, name):
+         '''Increment (or initialize) the value associated with the given name'''
+-        if not self.Stats.has_key(name):
++        if name not in self.Stats:
+             self.Stats[name]=0
+         self.Stats[name] = self.Stats[name]+1
+ 
+@@ -634,7 +634,7 @@ class StonithTest(CTSTest):
+         # for v2, stonithd test is a better test to run.
+         if self.CM["Name"] == "linux-ha-v2":
+             return None
+-        if self.CM.Env.has_key("DoStonith"):
++        if "DoStonith" in self.CM.Env:
+             return self.CM.Env["DoStonith"]
+         return 1
+ 
+@@ -708,7 +708,7 @@ class StonithdTest(StonithTest):
+         if not self.CM["Name"] == "linux-ha-v2":
+             return 0
+ 
+-        if self.CM.Env.has_key("DoStonith"):
++        if "DoStonith" in self.CM.Env:
+             return self.CM.Env["DoStonith"]
+ 
+         return 1
+@@ -1064,7 +1064,7 @@ class StandbyTest(CTSTest):
+     def is_applicable(self):
+         '''StandbyTest is applicable when the CM has a Standby command'''
+ 
+-        if not self.CM.has_key("Standby"):
++        if "Standby" not in self.CM:
+            return None
+         else:
+ 
+@@ -1083,7 +1083,7 @@ class StandbyTest(CTSTest):
+                 return None
+ 
+             cf = self.CM.cf
+-            if not cf.Parameters.has_key("auto_failback"):
++            if "auto_failback" not in cf.Parameters:
+                 return None
+             elif cf.Parameters["auto_failback"][0] == "legacy":
+                 return None
+@@ -1344,7 +1344,7 @@ class BandwidthTest(CTSTest):
+                 T1 = linesplit[0]
+                 timesplit = string.split(T1,":")
+                 time2split = string.split(timesplit[2],".")
+-                time1 = (long(timesplit[0])*60+long(timesplit[1]))*60+long(time2split[0])+long(time2split[1])*0.000001
++                time1 = (int(timesplit[0])*60+int(timesplit[1]))*60+int(time2split[0])+int(time2split[1])*0.000001
+                 break
+ 
+         while count < 100:
+@@ -1366,7 +1366,7 @@ class BandwidthTest(CTSTest):
+         T2 = linessplit[0]
+         timesplit = string.split(T2,":")
+         time2split = string.split(timesplit[2],".")
+-        time2 = (long(timesplit[0])*60+long(timesplit[1]))*60+long(time2split[0])+long(time2split[1])*0.000001
++        time2 = (int(timesplit[0])*60+int(timesplit[1]))*60+int(time2split[0])+int(time2split[1])*0.000001
+         time = time2-time1
+         if (time <= 0):
+             return 0
+Index: heartbeat-3.0.6/cts/OCFIPraTest.py.in
+===================================================================
+--- heartbeat-3.0.6.orig/cts/OCFIPraTest.py.in
++++ heartbeat-3.0.6/cts/OCFIPraTest.py.in
+@@ -26,13 +26,13 @@ Licensed under the GNU GPL.
+ import string,sys,struct,os,random,time,syslog
+ 
+ def usage():
+-    print "usage: " + sys.argv[0]  \
++    print(("usage: " + sys.argv[0]  \
+     +  " [-2]"\
+     +  " [--ipbase|-i first-test-ip]"\
+     +  " [--ipnum|-n test-ip-num]"\
+     +  " [--help|-h]"\
+     +  " [--perform|-p op]"\
+-    +  " [number-of-iterations]"
++    +  " [number-of-iterations]"))
+     sys.exit(1)
+ 
+ def perform_op(ra, ip, op):
+@@ -66,7 +66,7 @@ def log(towrite):
+     t = time.strftime("%Y/%m/%d_%H:%M:%S\t", time.localtime(time.time()))  
+     logstr = t + " "+str(towrite)
+     syslog.syslog(logstr)
+-    print logstr
++    print(logstr)
+ 
+ if __name__ == '__main__': 
+     ra = "IPaddr"
+Index: heartbeat-3.0.6/cts/extracttests.py.in
+===================================================================
+--- heartbeat-3.0.6.orig/cts/extracttests.py.in
++++ heartbeat-3.0.6/cts/extracttests.py.in
+@@ -69,7 +69,7 @@ class ExtractTests:
+         testlist = self.expandtestranges(testlist)
+         testlist.sort(sorttestnum)
+         self.testlist = testlist
+-        print "Extracting tests ", self.testlist
++        print(("Extracting tests ", self.testlist))
+         self.regex=re.compile(" CTS: Running test .*\[([0-9]+)")
+         self.CTSregex=re.compile(" CTS: ")
+ 
+@@ -96,7 +96,7 @@ class ExtractTests:
+                     break
+ 
+ if len(sys.argv) < 3:
+-    print "Usage:", sys.argv[0] , "logfilename testnumber ..."
++    print(("Usage:", sys.argv[0] , "logfilename testnumber ..."))
+     sys.exit(1)
+ foo = ExtractTests (sys.argv[1], sys.argv[2:])
+ foo()
+Index: heartbeat-3.0.6/cts/getpeinputs.sh.in
+===================================================================
+--- heartbeat-3.0.6.orig/cts/getpeinputs.sh.in
++++ heartbeat-3.0.6/cts/getpeinputs.sh.in
+@@ -19,8 +19,8 @@ is named after the test number.
+ 
+ Examples:
+ 
+-	python @HA_NOARCHDATAHBDIR@/cts/extracttests.py /var/log/ha-debug 122 | $0
+-	python @HA_NOARCHDATAHBDIR@/cts/extracttests.py /var/log/ha-debug 122 | tee 122.ha-debug | $0
++	python3 @HA_NOARCHDATAHBDIR@/cts/extracttests.py /var/log/ha-debug 122 | $0
++	python3 @HA_NOARCHDATAHBDIR@/cts/extracttests.py /var/log/ha-debug 122 | tee 122.ha-debug | $0
+ 
+ NB: Files are copied using ssh as root. In case you use different
+ user for ssh run the program like this:

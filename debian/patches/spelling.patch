@@ -1,0 +1,67 @@
+Description: Fix spelling reported by lintian
+Author: Valentin Vidic <Valentin.Vidic@CARNet.hr>
+Last-Update: 2018-05-01
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
+--- a/tools/cl_respawn.c
++++ b/tools/cl_respawn.c
+@@ -77,7 +77,7 @@
+ "-r	Recover itself from crash. Only called by other monitor programs like"
+ "	recovery manager.\n"
+ "-l	List the program monitored by cl_respawn.\n"
+-"	Notice: donnot support yet.\n"
++"	Notice: do not support yet.\n"
+ "-h	Display this simple help.\n";
+ 
+ 
+--- a/membership/ccm/ccmupdate.c
++++ b/membership/ccm/ccmupdate.c
+@@ -205,7 +205,7 @@
+ 				entry->index);
+ 
+ 	if (value == 0){
+-		ccm_log(LOG_ERR, "update_compute_leader:same id comparsion?");
++		ccm_log(LOG_ERR, "update_compute_leader:same id comparison?");
+ 		abort();
+ 	}
+ 	
+@@ -221,7 +221,7 @@
+ {
+ 	int i; 
+ 	
+-	ccm_debug(pri, "diplaying update information: ");
++	ccm_debug(pri, "displaying update information: ");
+ 	ccm_debug(pri, "leader=%d(%s) nodeCount=%d", 
+ 	       tab -> leader,
+ 	       (tab->leader<0 || tab->leader >= (int)llm_get_nodecount(llm))?
+--- a/membership/ccm/ccm_statemachine.c
++++ b/membership/ccm/ccm_statemachine.c
+@@ -3387,7 +3387,7 @@
+ 			
+ 			if (cl_msg_get_list_int(reply,CCM_UPTIMELIST, 
+ 						uptime_list, &uptime_size) != HA_OK){
+-				ccm_log(LOG_ERR,"%s: geting uptie_list failed",
++				ccm_log(LOG_ERR,"%s: getting uptie_list failed",
+ 					__FUNCTION__);
+ 				return;
+ 			}
+@@ -3661,7 +3661,7 @@
+ 			
+ 			if (cl_msg_get_list_int(reply,CCM_UPTIMELIST, 
+ 						uptime_list, &uptime_size) != HA_OK){
+-				ccm_log(LOG_ERR,"%s: geting uptie_list failed", __FUNCTION__);
++				ccm_log(LOG_ERR,"%s: getting uptie_list failed", __FUNCTION__);
+ 				return;
+ 			}
+ 			
+--- a/contrib/mlock/mlock.c
++++ b/contrib/mlock/mlock.c
+@@ -295,7 +295,7 @@
+ 	
+ 	if(memcmp(buf, msg, LOCKLEN) != 0){
+ 		output("\nread content is not matched\n");
+-		output("conent in file is =%s,\n"
++		output("content in file is =%s,\n"
+ 		       "the msg compared with is %s\n", buf, msg);
+ 		exit(1);
+ 	}

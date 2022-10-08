@@ -1,0 +1,106 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: heartbeat
+Source: http://linux-ha.org/wiki/Download
+
+Files: *
+Copyright: 1998-2010 Alan Robertson <alanr@unix.sh>
+           1998-2010 Andreas Mock <andreas.mock@web.de>
+           1998-2010 Andrew Beekhof <andrew@beekhof.net>
+           1998-2010 Dave Blaschke <debltc@us.ibm.com>
+           1998-2010 David Lee <t.d.lee@durham.ac.uk>
+           1998-2010 Dejan Muhamedagic <dejan@hello-penguin.com>
+           1998-2010 Hannes Eder <heder@google.com>
+           1998-2010 Huang Zhen <zhenhltc@cn.ibm.com>
+           1998-2010 Junko Ikeda <ikedaj@intellilink.co.jp>
+           1998-2010 Lars Marowsky-Bree <lmb@suse.de>
+           1998-2010 Martin Bene <martin.bene@icomedias.com>
+           1998-2010 Phil Carns <carns@mcs.anl.gov>
+           1998-2010 Satomi Taniguchi <taniguchis@intellilink.co.jp>
+           1998-2010 Sean Reifschneider <jafo@tummy.com>
+           1998-2010 Sebastian Reitenbach <itlistuser@rapideye.de>
+           1998-2010 Serge Dubrouski <sergeyfd@gmail.com>
+           1998-2010 Simon Horman <horms@verge.net.au>
+           1998-2010 Xinwei Hu <hxinwei@gmail.com>
+                     Tom Vogt <tom@lemuria.org>	(udp code)
+                     yuri volobuev <volobuev@t1.chem.umn.edu> (send_arp.c)
+                     Russell Kroll <rkroll@exploits.org> (APCSmart support)
+                     David C. Teigland <teigland@sistina.com> (GFS stonith)
+                     salz@pebbles.bbn.com (scandir)
+                     Internet Software Consortium (inet_pton)
+License: GPL-2+
+
+Files: replace/*
+       include/*
+       heartbeat/hb_rexmit.c
+       resources/heartbeat/LVM.in
+       membership/ccm/ccmlib_eventapi.c
+       membership/ccm/ccmlib.h
+       membership/ccm/ccmlib_memapi.c
+       membership/ccm/ccmlib_clm.c
+       lib/lrm/lrm_msg.c
+       lib/lrm/clientlib.c
+       lib/cmsclient/cmsclient.h
+       lib/cmsclient/cmslib_client.h
+       lib/cmsclient/cmslib_client.c
+       lib/plugins/*
+       lib/apphb/apphb.c
+       lib/hbclient/client_lib.c
+Copyright: 1998-2010 Alan Robertson <alanr@unix.sh>
+           1998-2010 Andreas Mock <andreas.mock@web.de>
+           1998-2010 Andrew Beekhof <andrew@beekhof.net>
+           1998-2010 Dave Blaschke <debltc@us.ibm.com>
+           1998-2010 David Lee <t.d.lee@durham.ac.uk>
+           1998-2010 Dejan Muhamedagic <dejan@hello-penguin.com>
+           1998-2010 Hannes Eder <heder@google.com>
+           1998-2010 Huang Zhen <zhenhltc@cn.ibm.com>
+           1998-2010 Junko Ikeda <ikedaj@intellilink.co.jp>
+           1998-2010 Lars Marowsky-Bree <lmb@suse.de>
+           1998-2010 Martin Bene <martin.bene@icomedias.com>
+           1998-2010 Phil Carns <carns@mcs.anl.gov>
+           1998-2010 Satomi Taniguchi <taniguchis@intellilink.co.jp>
+           1998-2010 Sean Reifschneider <jafo@tummy.com>
+           1998-2010 Sebastian Reitenbach <itlistuser@rapideye.de>
+           1998-2010 Serge Dubrouski <sergeyfd@gmail.com>
+           1998-2010 Simon Horman <horms@verge.net.au>
+           1998-2010 Xinwei Hu <hxinwei@gmail.com>
+                     Tom Vogt <tom@lemuria.org>	(udp code)
+                     yuri volobuev <volobuev@t1.chem.umn.edu> (send_arp.c)
+                     Russell Kroll <rkroll@exploits.org> (APCSmart support)
+                     David C. Teigland <teigland@sistina.com> (GFS stonith)
+                     salz@pebbles.bbn.com (scandir)
+                     Internet Software Consortium (inet_pton)
+License: LGPL-2.1
+
+License: GPL-2+
+ This package is free software; you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation; either version 2 of the License, or
+ (at your option) any later version.
+ .
+ This package is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+ .
+ You should have received a copy of the GNU General Public License
+ along with this program. If not, see <https://www.gnu.org/licenses/>
+ .
+ On Debian systems, the complete text of the GNU General
+ Public License version 2 can be found in "/usr/share/common-licenses/GPL-2".
+
+License: LGPL-2.1
+ This package is free software; you can redistribute it and/or
+ modify it under the terms of the GNU Lesser General Public
+ License as published by the Free Software Foundation; either
+ version 2.1 of the License, or (at your option) any later version.
+ .
+ This package is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ Lesser General Public License for more details.
+ .
+ You should have received a copy of the GNU Lesser General Public License
+ along with this program. If not, see <https://www.gnu.org/licenses/>.
+ .
+ On Debian systems, the complete text of the GNU Lesser General
+ Public License can be found in "/usr/share/common-licenses/LGPL-2.1".

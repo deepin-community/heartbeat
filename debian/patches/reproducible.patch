@@ -1,0 +1,27 @@
+Description: Fix reproducible build
+ Use -ggdb2 instead of -ggdb3 for reproducible build
+ Use -w1 as default in case ping does not work
+Author: Valentin Vidic <vvidic@debian.org>
+Last-Update: 2020-08-22
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
+--- a/configure.ac
++++ b/configure.ac
+@@ -778,7 +778,7 @@
+ 
+ 
+ AC_MSG_CHECKING(ping option for timeout - w or t)
+-for PING_TIMEOUT_OPT in "-w1" "-t1"
++for PING_TIMEOUT_OPT in "-w1" "-t1" "-w1"
+ do
+   $PING -nq -c1 $PING_TIMEOUT_OPT localhost > /dev/null 2>&1
+   if
+@@ -2087,7 +2087,7 @@
+ fi
+ 
+ if test "$GCC" = yes; then
+-  CFLAGS="$CFLAGS -ggdb3"
++  CFLAGS="$CFLAGS -ggdb2"
+   if
+     cc_supports_flag -funsigned-char
+   then

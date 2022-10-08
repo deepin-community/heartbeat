@@ -1,0 +1,27 @@
+Description: portblock resource agent script errors
+ Fixes parameter handing in portblock script
+Author: Valentin Vidic <Valentin.Vidic@CARNet.hr>
+Bug: https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=538987
+Bug-Ubuntu: https://bugs.launchpad.net/ubuntu/+source/heartbeat/+bug/489719
+Last-Update: 2017-08-26
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
+--- a/resources/heartbeat/portblock.in
++++ b/resources/heartbeat/portblock.in
+@@ -17,14 +17,14 @@
+     exit 1
+ }
+ 
+-if [ $# != 3 ]; then
++if [ $# != 4 ]; then
+     usage
+ fi
+ 
+ OCF_RESKEY_protocol=$1
+ OCF_RESKEY_portno=$2
+ OCF_RESKEY_action=$3
+-export OCF_RESKEY_action OCF_RESKEY_portno OCF_RESKEY_action
++export OCF_RESKEY_protocol OCF_RESKEY_portno OCF_RESKEY_action
+ 
+ OCF_TYPE=portblock
+ OCF_RESOURCE_INSTANCE=${OCF_TYPE}_$1_$2_$3

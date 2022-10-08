@@ -1,0 +1,31 @@
+#!/bin/sh
+
+set -e
+
+HOSTNAME=$(hostname)
+IFACE=$(ip route show 0/0 | head -n 1 | cut -d ' ' -f 5)
+
+cat <<EOF >/etc/ha.d/ha.cf
+logfacility local0
+auto_failback on
+bcast $IFACE
+node $HOSTNAME
+node dummy
+EOF
+
+cat <<EOF >/etc/ha.d/haresources
+$HOSTNAME IPaddr2::169.254.144.144/32/$IFACE
+EOF
+
+cat <<EOF >/etc/ha.d/authkeys
+auth 1
+1 sha1 autopkgtest
+EOF
+chmod 600 /etc/ha.d/authkeys
+
+service heartbeat restart
+
+sleep 60
+
+service heartbeat status
+ip a | grep 169.254.144.144

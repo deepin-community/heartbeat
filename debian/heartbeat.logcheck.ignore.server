@@ -1,0 +1,1 @@
+^\w{3} [ :0-9]{11} [._[:alnum:]-]+ heartbeat: \[[0-9]+\]: info: (Daily informational memory statistics|These are nothing to worry about\.|(MSG|cl_malloc|RealMalloc) stats:.*|Current arena value: .*)$
