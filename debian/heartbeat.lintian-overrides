@@ -1,1 +1,1 @@
-heartbeat: binary-without-manpage usr/bin/cl_respawn
+heartbeat: no-manual-page [usr/bin/cl_respawn]
