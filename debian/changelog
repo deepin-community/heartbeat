@@ -1,3 +1,27 @@
+heartbeat (1:3.0.6-14) unstable; urgency=medium
+
+  [ Helmut Grohne ]
+  * Fix FTBFS with changed systemd_system_unit_dir. (Closes: #1052277)
+
+  [ Valentin Vidic ]
+  * Use Standards-Version 4.6.2
+  * Use libncurses-dev in Build-Depends
+  * Update lintian-overrides
+
+ -- Valentin Vidic <vvidic@debian.org>  Thu, 21 Dec 2023 17:32:05 +0100
+
+heartbeat (1:3.0.6-13) unstable; urgency=medium
+
+  [ Debian Janitor ]
+  * Remove constraints unnecessary since buster
+  * Update renamed lintian tag names in lintian overrides.
+
+  [ Valentin Vidic ]
+  * Use libltdl-dev in Build-Depends (Closes: #1008800)
+  * Move internal binaries to /usr/libexec/heartbeat
+
+ -- Valentin Vidic <vvidic@debian.org>  Sat, 02 Apr 2022 00:34:24 +0200
+
 heartbeat (1:3.0.6-12) unstable; urgency=medium
 
   * Use tmpfiles.d to create /run/heartbeat (Closes: #993575)

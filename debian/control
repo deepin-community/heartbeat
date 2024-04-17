@@ -19,8 +19,8 @@ Build-Depends:
  libbz2-dev,
  libglib2.0-dev,
  libgnutls28-dev,
- libltdl3-dev,
- libncurses5-dev,
+ libltdl-dev,
+ libncurses-dev,
  libopenhpi-dev,
  libopenipmi-dev,
  libpam0g-dev,
@@ -35,6 +35,7 @@ Build-Depends:
  net-tools,
  openssh-client,
  perl,
+ pkgconf,
  psmisc,
  python3-dev,
  resource-agents,
@@ -43,7 +44,7 @@ Build-Depends:
  uuid-dev,
  xsltproc,
  zlib1g-dev,
-Standards-Version: 4.6.0
+Standards-Version: 4.6.2
 Homepage: http://www.linux-ha.org/
 Vcs-Browser: https://salsa.debian.org/ha-team/heartbeat
 Vcs-Git: https://salsa.debian.org/ha-team/heartbeat.git
@@ -56,7 +57,7 @@ Depends:
  gawk,
  iproute2 [linux-any],
  inetutils-ping | iputils-ping | ping,
- libpam-runtime (>= 0.76-14),
+ libpam-runtime,
  libxml2-utils,
  psmisc,
  resource-agents,
@@ -66,7 +67,7 @@ Depends:
 Recommends:
  iptables,
  logrotate,
- pacemaker (>= 1.0.6),
+ pacemaker,
  rsyslog | system-log-daemon,
 Provides:
  cluster-messaging-framework,
@@ -86,7 +87,6 @@ Depends:
 Breaks:
  libpils-dev (<< 2.0.8-3),
  libstonith-dev (<< 2.0.8-3),
- pacemaker-dev (<< 1.0.1-1),
 Description: Subsystem for High-Availability Linux - development files
  heartbeat is a messaging subsystem for high availability which implements
  serial, UDP, and PPP/UDP heartbeats.
@@ -102,10 +102,6 @@ Architecture: any
 Depends:
  ${misc:Depends},
  ${shlibs:Depends},
-Replaces:
- heartbeat (<= 2.99.2+sles11r7-0+1),
-Breaks:
- heartbeat (<= 2.99.2+sles11r7-0+1),
 Description: Subsystem for High-Availability Linux (libraries)
  heartbeat is a messaging subsystem for high availability which implements
  serial, UDP, and PPP/UDP heartbeats.
@@ -123,10 +119,6 @@ Architecture: any
 Depends:
  libheartbeat2 (= ${binary:Version}),
  ${misc:Depends},
-Replaces:
- heartbeat (<= 2.99.2+sles11r7-0+1),
-Breaks:
- heartbeat (<= 2.99.2+sles11r7-0+1),
 Description: Subsystem for High-Availability Linux (development files)
  heartbeat is a messaging subsystem for high availability which implements
  serial, UDP, and PPP/UDP heartbeats.

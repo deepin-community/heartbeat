@@ -12,7 +12,7 @@ include /usr/share/dpkg/buildflags.mk
 cfg:=PING=/bin/ping IFCONFIG=/sbin/ifconfig IP2UTIL=/sbin/ip \
   PYTHON=/usr/bin/python3 \
   --prefix=/usr --sysconfdir=/etc --localstatedir=/var \
-  --libexecdir=/usr/lib \
+  --libexecdir=/usr/libexec \
   --mandir=/usr/share/man --disable-crm \
   --with-group-name=haclient --with-ccmuser-name=hacluster \
   --enable-libc-malloc --disable-fatal-warnings
@@ -23,6 +23,8 @@ DTMP:=`pwd`/debian/tmp
 ifeq ($(DEB_HOST_ARCH_OS), kfreebsd)
 DH_INSTALL_EXCLUDE=-Xdopd -Xdrbd
 endif
+
+export systemd_system_unit_dir=$(shell pkgconf --variable=systemd_system_unit_dir systemd | sed 's,^/,,' )
 
 build: build-arch build-indep
 build-arch: build-stamp
@@ -100,14 +102,6 @@ install-stamp:
 	# remove duplicate header file to not conflict with cluster-glue
 	rm -rf ./debian/libheartbeat2-dev/usr/include/heartbeat/ha_msg.h
 	rm -rf ./debian/libheartbeat2-dev/usr/include/heartbeat/compress.h
-
-	# move sysv init script and systemd service file to expected locations for dh_install
-	! test -e ./debian/tmp/usr/lib/tmpfiles.d/heartbeat.conf || \
-	mv ./debian/tmp/usr/lib/tmpfiles.d/heartbeat.conf ./debian/heartbeat.tmpfiles
-	! test -e ./debian/tmp/lib/systemd/system/heartbeat.service || \
-	mv ./debian/tmp/lib/systemd/system/heartbeat.service ./debian/heartbeat.service
-	! test -e ./debian/tmp/etc/init.d/heartbeat || \
-	mv ./debian/tmp/etc/init.d/heartbeat ./debian/heartbeat.init
 
 	# python modules will be compiled in postinst
 	rm -f ./debian/tmp/usr/share/heartbeat/cts/*.py[co]
